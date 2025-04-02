@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast MP3 Downloader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        select, input[type="text"], input[type="number"], button {
+            width: 95%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        h2 {
+            color: #333;
+            margin-top: 30px;
+        }
+        p {
+            word-break: break-all;
+        }
+        .item-container {
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .item-container h3 {
+            margin: 0;
+            color: #007bff;
+        }
+        .item-container p {
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+        .download-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .download-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Podcast MP3 Downloader</h1>
+
+    <!-- Dropdown menu for selecting default URLs -->
+	<div>
+    <label for="urlSelect">Select a Default URL:</label>
+	<br/>
+    <select id="urlSelect" onchange="populateUrlInput()">
+        <option value="">-- Select a Source --</option>
+        <option value="https://podcasts.files.bbci.co.uk/p02nq0gn.rss">BBC News</option>
+        <option value="https://podcasts.files.bbci.co.uk/w13xtvrv.rss">BBC What in the World</option>
+        <option value="https://feeds.megaphone.fm/WMHY5177234123">CNN One Thing</option>
+        <option value="https://feeds.megaphone.fm/WMHY2007701094">CNN 5 Things</option>
+		<option value="">custom URL</option>
+    </select>
+	</div>
+
+	<div>
+    <!-- Input field for custom URL -->
+    <label for="urlInput">Or enter a custom URL: <a href="https://podcastindex.org/" target="_blank" rel="noopener noreferrer">Podcast Index</a></label>
+	<br/>
+    <input type="text" id="urlInput" placeholder="Enter URL here">
+	</div>
+
+    <!-- Number input for limiting displayed results -->
+	<div>
+    <label for="limitInput">Number of items to display:</label>
+	<br/>
+    <input type="number" id="limitInput" placeholder="Enter limit" min="1" step="1" value="5">
+	</div>
+
+    <button onclick="fetchAndExtract()">Extract URLs</button>
+
+    <!-- Section to display extracted titles, descriptions, and media URLs -->
+    <h2>Extracted Titles, Descriptions, and Media URLs:</h2>
+    <div id="result"></div>
+
+    <script>
+        // Populate the URL input field based on dropdown selection
+        function populateUrlInput() {
+            const selectedUrl = document.getElementById("urlSelect").value;
+            document.getElementById("urlInput").value = selectedUrl;
+        }
+
+        async function fetchAndExtract() {
+            const url = document.getElementById("urlInput").value;
+            const limit = parseInt(document.getElementById("limitInput").value) || Infinity; // Limit to display
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = ""; // Clear previous results
+
+            try {
+                // Fetch the XML data from the URL
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const textData = await response.text();
+
+                // Parse the XML data
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(textData, "application/xml");
+
+                // Check for XML parsing errors
+                const parseError = xmlDoc.getElementsByTagName("parsererror");
+                if (parseError.length > 0) {
+                    resultDiv.innerHTML = "<p>Error: Unable to parse XML. Ensure the URL provides valid XML data.</p>";
+                    return;
+                }
+
+                // Find all <item> elements
+                const items = xmlDoc.getElementsByTagName("item");
+                if (items.length === 0) {
+                    resultDiv.innerHTML = "<p>No items found in the provided XML data.</p>";
+                    return;
+                }
+
+                // Limit the number of items processed
+                const numItemsToProcess = Math.min(items.length, limit);
+
+                // Loop through each item and extract title, description, and media URLs
+                for (let i = 0; i < numItemsToProcess; i++) {
+                    const item = items[i];
+
+                    // Extract title
+                    const title = item.getElementsByTagName("title")[0]?.textContent || "No title available";
+
+                    // Extract and clean description (remove HTML tags)
+                    let description = item.getElementsByTagName("description")[0]?.textContent || "No description available";
+                    description = description.replace(/<[^>]*>/g, ''); // Remove HTML tags
+
+                    // Extract media URLs (.mp3 and .mp4) from <enclosure> elements
+                    const mediaUrls = [];
+                    const enclosures = item.getElementsByTagName("enclosure");
+                    for (const enclosure of enclosures) {
+                        const mediaUrl = enclosure.getAttribute("url");
+                        if (mediaUrl && (mediaUrl.includes(".mp3") || mediaUrl.includes(".mp4"))) {
+                            mediaUrls.push(mediaUrl);
+                        }
+                    }
+
+                    // Only display items with media URLs
+                    if (mediaUrls.length > 0) {
+                        // Create a container for each item
+                        const itemContainer = document.createElement("div");
+                        itemContainer.classList.add("item-container");
+
+                        // Title
+                        const titleElement = document.createElement("h3");
+                        titleElement.textContent = title;
+                        itemContainer.appendChild(titleElement);
+
+                        // Description
+                        const descriptionElement = document.createElement("p");
+                        descriptionElement.textContent = description;
+                        itemContainer.appendChild(descriptionElement);
+
+                        // Media URLs with download buttons
+                        mediaUrls.forEach(mediaUrl => {
+                            const urlElement = document.createElement("p");
+                            urlElement.textContent = mediaUrl;
+
+                            const downloadButton = document.createElement("button");
+                            downloadButton.textContent = "Download";
+                            downloadButton.classList.add("download-button");
+                            downloadButton.onclick = () => downloadMedia(mediaUrl);
+
+                            itemContainer.appendChild(urlElement);
+                            itemContainer.appendChild(downloadButton);
+                        });
+
+                        resultDiv.appendChild(itemContainer);
+                    }
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p>Error fetching data: ${error.message}</p>`;
+            }
+        }
+
+        // Download the individual media file
+        function downloadMedia(mediaUrl) {
+            const a = document.createElement("a");
+            a.href = mediaUrl;
+            a.target ="_blank"
+            a.download = ""; // Trigger download with browser-decided filename
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
