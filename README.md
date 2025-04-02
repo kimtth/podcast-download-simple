@@ -8,7 +8,7 @@ A simple file to extract and download podcast episodes from RSS feeds.
 - Download MP3 files with one click  
 
 ## 📌Usage  
-1. Open `index.html` in a browser  
+1. Open `podcast-mp3.html` in a browser  
 2. Enter or select a podcast URL  
 3. Click "Extract URLs" and download episodes  
 
