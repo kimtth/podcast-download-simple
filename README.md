@@ -1,6 +1,6 @@
 # 🎧 Podcast MP3 Downloader  
 
-A simple file to extract and download podcast episodes from RSS feeds.  
+A simple, standalone HTML file to extract and download podcast episodes from RSS feeds.  
 
 ## 📥Features  
 - Select or enter a podcast RSS URL  
